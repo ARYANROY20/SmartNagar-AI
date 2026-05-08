@@ -1,0 +1,78 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A citizen or admin in the SmartNagar AI system",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "trustScore": { "type": "number", "description": "0-100 score" },
+        "role": { "type": "string", "enum": ["citizen", "admin"] },
+        "createdAt": { "type": "string", "format": "timestamp" }
+      },
+      "required": ["email", "role", "createdAt"]
+    },
+    "Complaint": {
+      "title": "Complaint",
+      "description": "A civic issue reported by a citizen",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "locationName": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "status": { "type": "string", "enum": ["Pending Review", "Scheduled", "In Progress", "Resolved"] },
+        "priority": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "URGENT"] },
+        "imageUrl": { "type": "string" },
+        "upvotesCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "timestamp" },
+        "updatedAt": { "type": "string", "format": "timestamp" }
+      },
+      "required": ["userId", "title", "description", "category", "latitude", "longitude", "status", "createdAt", "updatedAt"]
+    },
+    "Vote": {
+      "title": "Vote",
+      "description": "An upvote on a complaint by a citizen",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "timestamp" }
+      },
+      "required": ["userId", "createdAt"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "A comment on a complaint",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "timestamp" }
+      },
+      "required": ["userId", "userName", "text", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles. Includes basic details and application role."
+    },
+    "/complaints/{complaintId}": {
+      "schema": { "$ref": "#/entities/Complaint" },
+      "description": "Civic complaints reported by citizens."
+    },
+    "/complaints/{complaintId}/votes/{voteId}": {
+      "schema": { "$ref": "#/entities/Vote" },
+      "description": "Upvotes for a complaint. Structured as a subcollection to avoid bounded array limits and allow atomicity."
+    },
+    "/complaints/{complaintId}/comments/{commentId}": {
+      "schema": { "$ref": "#/entities/Comment" },
+      "description": "Comments on a complaint."
+    }
+  }
+}

@@ -1,0 +1,195 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Phase 3: Primitive Definition ---
+    function isValidId(id) { return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isSignedIn() { return request.auth != null; }
+
+    // Admin privileges
+    function isSystemAdminBootstrapped() {
+      return isSignedIn() 
+        && request.auth.token.email == 'asadhasan1709@gmail.com' 
+        && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isSystemAdminBootstrapped() || (
+        isSignedIn() 
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    // --- Admins Collection ---
+    match /admins/{userId} {
+      allow get: if isSignedIn() && isValidId(userId);
+      allow list: if false; // No blanket listing of admins
+      allow write: if isSystemAdminBootstrapped();
+    }
+
+    // --- Users Collection ---
+    function isValidUserCreate(data) {
+      return data.keys().hasAll(['email', 'role', 'createdAt'])
+        && data.keys().size() <= 6
+        && data.email is string && data.email.size() <= 100
+        && data.role == 'citizen' // Prevent self-assigning admin! Only system admin or manual backend edit can assign admin.
+        && data.createdAt == request.time
+        && (!('name' in data) || (data.name is string && data.name.size() <= 100))
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1048487))
+        && (!('trustScore' in data) || (data.trustScore is number && data.trustScore >= 0 && data.trustScore <= 100));
+    }
+
+    match /users/{userId} {
+      // Get: Users can get their own profile. Admins can get any profile.
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      // List: No blanket listing of users to prevent PII Leak unconditionally. We do not use 'isAdmin()' in 'list' because it requires exists() which is forbidden in 'list'.
+      allow list: if false; 
+      
+      allow create: if isSignedIn() 
+        && request.auth.uid == userId 
+        && isValidId(userId)
+        && isValidUserCreate(incoming());
+      
+      allow update: if isSignedIn() 
+        && isValidId(userId)
+        && incoming().email == existing().email // Immutable after create
+        && incoming().createdAt == existing().createdAt // Immutable after create
+        && (
+          (isAdmin()) || 
+          (request.auth.uid == userId 
+           && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'photoURL']) 
+           && (!('name' in incoming()) || (incoming().name is string && incoming().name.size() <= 100))
+           && (!('photoURL' in incoming()) || (incoming().photoURL is string && incoming().photoURL.size() <= 1048487))
+          ) ||
+          (
+           incoming().diff(existing()).affectedKeys().hasOnly(['trustScore']) // TrustScore incremented on upvote
+           && incoming().trustScore == existing().trustScore + 1
+          )
+        );
+
+      // --- Notifications Subcollection ---
+      match /notifications/{notificationId} {
+        allow get: if isSignedIn() && request.auth.uid == userId && isValidId(notificationId);
+        allow list: if isSignedIn() && request.auth.uid == userId;
+        
+        allow create: if isSignedIn() 
+          && isAdmin() // Only Admins can send notifications
+          && isValidId(notificationId)
+          && incoming().keys().hasAll(['title', 'message', 'isNew', 'createdAt'])
+          && incoming().keys().size() <= 6
+          && incoming().title is string && incoming().title.size() > 0 && incoming().title.size() <= 200
+          && incoming().message is string && incoming().message.size() > 0 && incoming().message.size() <= 1000
+          && incoming().isNew is bool
+          && incoming().createdAt == request.time
+          && (!('complaintId' in incoming()) || (incoming().complaintId is string && incoming().complaintId.size() <= 128));
+          
+        allow update: if isSignedIn() 
+          && request.auth.uid == userId
+          && isValidId(notificationId)
+          && incoming().diff(existing()).affectedKeys().hasOnly(['isNew'])
+          && incoming().isNew == false; // Users can only mark as read
+      }
+    }
+
+    // --- Complaints Collection ---
+    function isValidComplaintCreate(data) {
+      return data.keys().hasAll(['userId', 'title', 'description', 'category', 'locationName', 'latitude', 'longitude', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().size() <= 13
+        && data.userId == request.auth.uid
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 200
+        && data.description is string && data.description.size() <= 2000
+        && data.category is string && data.category.size() > 0 && data.category.size() <= 50
+        && data.locationName is string && data.locationName.size() <= 200
+        && data.latitude is number && data.latitude >= -90 && data.latitude <= 90
+        && data.longitude is number && data.longitude >= -180 && data.longitude <= 180
+        && data.status == 'Pending Review' // Enforce initial state
+        && data.createdAt == request.time
+        && data.updatedAt == request.time
+        && (!('priority' in data) || (data.priority is string && data.priority.matches('^(LOW|MEDIUM|HIGH|URGENT)$')))
+        && (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 1048480))
+        && (!('upvotesCount' in data) || (data.upvotesCount is number && data.upvotesCount == 0)); // Must start at 0
+    }
+
+    function isValidComplaintUpdate(newData) {
+      return (!('title' in newData) || (newData.title is string && newData.title.size() <= 200))
+          && (!('status' in newData) || (newData.status in ['Pending Review', 'Scheduled', 'In Progress', 'Resolved', 'Rejected']))
+          && (!('priority' in newData) || (newData.priority in ['LOW', 'MEDIUM', 'HIGH', 'URGENT']))
+          && (!('upvotesCount' in newData) || newData.upvotesCount is number);
+    }
+
+    match /complaints/{complaintId} {
+      allow get: if isValidId(complaintId);
+      // List: We can list complaints (since coordinates are public anyways, no PII leakage). Alternatively we can add restriction.
+      allow list: if true; 
+      
+      allow create: if isSignedIn() 
+        && isValidId(complaintId)
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid)) // Ensure user profile exists
+        && isValidComplaintCreate(incoming());
+
+      allow update: if isSignedIn()
+        && isValidId(complaintId)
+        && isValidComplaintUpdate(incoming())
+        && incoming().updatedAt == request.time
+        && incoming().userId == existing().userId // Immutable
+        && incoming().createdAt == existing().createdAt // Immutable
+        && (
+            // Action Branch: Admin Management
+            (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'priority', 'updatedAt']))
+         || // Action Branch: Upvoting
+            (incoming().diff(existing()).affectedKeys().hasOnly(['upvotesCount', 'updatedAt'])
+             && incoming().upvotesCount == existing().upvotesCount + 1
+             && existing().status != 'Resolved') // Terminal State Lockout
+        );
+        
+      allow delete: if isAdmin() && isValidId(complaintId);
+
+      // --- Votes Subcollection ---
+      match /votes/{voteId} {
+        allow get: if isValidId(complaintId) && isValidId(voteId);
+        allow list: if isValidId(complaintId);
+        
+        allow create: if isSignedIn()
+          && isValidId(complaintId)
+          && isValidId(voteId)
+          && voteId == request.auth.uid // ID must be the user's ID
+          && incoming().keys().hasAll(['userId', 'createdAt'])
+          && incoming().keys().size() == 2
+          && incoming().userId == request.auth.uid
+          && incoming().createdAt == request.time
+          && exists(/databases/$(database)/documents/complaints/$(complaintId)) // Ensure Complaint exists
+          && get(/databases/$(database)/documents/complaints/$(complaintId)).data.status != 'Resolved'; // Terminal state lock
+          
+        allow delete: if isSignedIn() 
+          && isValidId(complaintId) 
+          && isValidId(voteId) 
+          && voteId == request.auth.uid
+          && get(/databases/$(database)/documents/complaints/$(complaintId)).data.status != 'Resolved'; // Terminal state lock
+      }
+      // --- Comments Subcollection ---
+      match /comments/{commentId} {
+        allow get: if isValidId(complaintId) && isValidId(commentId);
+        allow list: if isValidId(complaintId);
+        
+        allow create: if isSignedIn()
+          && isValidId(complaintId)
+          && isValidId(commentId)
+          && incoming().keys().hasAll(['userId', 'userName', 'text', 'createdAt'])
+          && incoming().keys().size() == 4
+          && incoming().userId == request.auth.uid
+          && incoming().userName is string && incoming().userName.size() <= 100
+          && incoming().text is string && incoming().text.size() > 0 && incoming().text.size() <= 1000
+          && incoming().createdAt == request.time
+          && exists(/databases/$(database)/documents/complaints/$(complaintId)); // Ensure Complaint exists
+          
+        allow delete: if isAdmin() && isValidId(complaintId) && isValidId(commentId);
+      }
+    }
+  }
+}
