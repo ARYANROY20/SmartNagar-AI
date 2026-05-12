@@ -12,21 +12,25 @@ import Profile from './pages/Profile';
 import Report from './pages/Report';
 import Auth from './pages/Auth';
 import AdminDashboard from './pages/AdminDashboard';
+import Intro, { Terms } from './pages/Intro';
 
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<AppLayout />}>
+          <Route index element={<Intro />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/app" element={<AppLayout />}>
             <Route index element={<Home />} />
             <Route path="report" element={<Report />} />
             <Route path="track" element={<Track />} />
             <Route path="profile" element={<Profile />} />
             <Route path="admin" element={<AdminDashboard />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/app" replace />} />
           </Route>
           <Route path="/auth" element={<Auth />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

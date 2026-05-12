@@ -80,13 +80,13 @@ export default function AppLayout() {
               </button>
             </div>
             <div className="flex flex-col flex-1 gap-2 p-4">
-              <SidebarItem to="/" icon={<Home className="w-5 h-5" />} label="Home" onClick={() => setIsMenuOpen(false)} />
-              <SidebarItem to="/report" icon={<PlusCircle className="w-5 h-5" />} label="Report Issue" onClick={() => setIsMenuOpen(false)} />
+              <SidebarItem to="/app" icon={<Home className="w-5 h-5" />} label="Home" onClick={() => setIsMenuOpen(false)} />
+              <SidebarItem to="/app/report" icon={<PlusCircle className="w-5 h-5" />} label="Report Issue" onClick={() => setIsMenuOpen(false)} />
               {role === 'admin' && (
-                <SidebarItem to="/admin" icon={<ShieldAlert className="w-5 h-5" />} label="Admin Dashboard" onClick={() => setIsMenuOpen(false)} />
+                <SidebarItem to="/app/admin" icon={<ShieldAlert className="w-5 h-5" />} label="Admin Dashboard" onClick={() => setIsMenuOpen(false)} />
               )}
-              <SidebarItem to="/track" icon={<Activity className="w-5 h-5" />} label="Track Complaints" onClick={() => setIsMenuOpen(false)} />
-              <SidebarItem to="/profile" icon={<User className="w-5 h-5" />} label="Profile" onClick={() => setIsMenuOpen(false)} />
+              <SidebarItem to="/app/track" icon={<Activity className="w-5 h-5" />} label="Track Complaints" onClick={() => setIsMenuOpen(false)} />
+              <SidebarItem to="/app/profile" icon={<User className="w-5 h-5" />} label="Profile" onClick={() => setIsMenuOpen(false)} />
             </div>
           </div>
         </div>
@@ -125,7 +125,7 @@ export default function AppLayout() {
                 photoURL={userData?.photoURL || user?.photoURL}
                 name={userData?.name || user?.displayName}
                 email={user?.email}
-                onClick={() => navigate('/profile')}
+                onClick={() => navigate('/app/profile')}
                 className="h-8 w-8 text-xs ring-2 ring-transparent hover:ring-blue-500 cursor-pointer transition-all"
                 title="Go to profile"
               />
@@ -191,13 +191,13 @@ export default function AppLayout() {
 
       {/* Bottom Navigation */}
       <nav className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-2 flex justify-between items-center rounded-t-2xl z-20 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
-        <NavItem to="/" icon={<Home className="h-5 w-5" />} label="Home" active={location.pathname === '/'} />
-        <NavItem to="/report" icon={<PlusCircle className="h-5 w-5" />} label="Report" active={location.pathname === '/report'} />
+        <NavItem to="/app" icon={<Home className="h-5 w-5" />} label="Home" active={location.pathname === '/app'} />
+        <NavItem to="/app/report" icon={<PlusCircle className="h-5 w-5" />} label="Report" active={location.pathname === '/app/report'} />
         {role === 'admin' && (
-          <NavItem to="/admin" icon={<ShieldAlert className="h-5 w-5" />} label="Admin" active={location.pathname === '/admin'} />
+          <NavItem to="/app/admin" icon={<ShieldAlert className="h-5 w-5" />} label="Admin" active={location.pathname === '/app/admin'} />
         )}
-        <NavItem to="/track" icon={<Activity className="h-5 w-5" />} label="Track" active={location.pathname === '/track'} />
-        <NavItem to="/profile" icon={<User className="h-5 w-5" />} label="Profile" active={location.pathname === '/profile'} />
+        <NavItem to="/app/track" icon={<Activity className="h-5 w-5" />} label="Track" active={location.pathname === '/app/track'} />
+        <NavItem to="/app/profile" icon={<User className="h-5 w-5" />} label="Profile" active={location.pathname === '/app/profile'} />
       </nav>
     </div>
   );
