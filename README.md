@@ -1,20 +1,41 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# SmartNagar AI
 
-# Run and deploy your AI Studio app
+AI-powered civic issue reporting PWA with Firebase Auth, a Vite React frontend, and an Express/MongoDB backend.
 
-This contains everything you need to run your app locally.
+## Structure
 
-View your app in AI Studio: https://ai.studio/apps/78dcb92c-d3ec-4d51-9ba3-da99284d3fdc
+- `frontend/` - React + Vite PWA. Firebase is used for authentication only.
+- `backend/` - Express API, MongoDB Atlas via Mongoose, Firebase Admin token verification, Multer image uploads, and Gemini issue analysis.
+- `firebase-applet-config.json` - Firebase client config used by the frontend.
 
-## Run Locally
+## Backend
 
-**Prerequisites:**  Node.js
+```bash
+cd backend
+npm install
+npm run dev
+```
 
+Set `backend/.env`:
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+```bash
+MONGODB_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/smartnagar
+GEMINI_API_KEY=your_gemini_api_key_here
+PORT=5000
+```
+
+For Firebase Admin, either configure Application Default Credentials or save a Firebase service account as `backend/serviceAccountKey.json`.
+
+## Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Set `frontend/.env`:
+
+```bash
+VITE_API_BASE_URL=http://localhost:5000
+```

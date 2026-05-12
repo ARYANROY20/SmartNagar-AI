@@ -1,0 +1,62 @@
+import mongoose from 'mongoose';
+
+const commentSchema = new mongoose.Schema({
+  userId: { type: String, required: true },
+  userName: { type: String, default: 'Anonymous Citizen' },
+  text: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const complaintSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: { type: String, default: '' },
+  imageUrl: { type: String, default: '' },
+  location: {
+    lat: { type: Number, required: true },
+    lng: { type: Number, required: true },
+    address: { type: String, default: '' }
+  },
+  category: {
+    type: String,
+    enum: ['Road Maintenance', 'Water & Sanitation', 'Electrical & Streetlights', 'Garbage & Waste', 'Public Infrastructure'],
+    required: true
+  },
+  status: {
+    type: String,
+    enum: ['Reported', 'Pending Review', 'Assigned', 'Scheduled', 'In Progress', 'Resolved', 'Rejected'],
+    default: 'Pending Review'
+  },
+  priority: {
+    type: String,
+    enum: ['LOW', 'MEDIUM', 'HIGH', 'URGENT'],
+    default: 'MEDIUM'
+  },
+  userId: { type: String, required: true },
+  userName: { type: String, default: 'Anonymous' },
+  assignedTo: { type: String, default: '' },
+  assignedDepartment: { type: String, default: '' },
+  taskNotes: { type: String, default: '' },
+  dueDate: { type: Date, default: null },
+  voteCount: { type: Number, default: 0 },
+  comments: { type: [commentSchema], default: [] },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+complaintSchema.virtual('id').get(function getId() {
+  return this._id.toString();
+});
+
+complaintSchema.set('toJSON', {
+  virtuals: true,
+  versionKey: false,
+  transform: (_doc, ret) => {
+    ret.locationName = ret.location?.address || `Lat: ${ret.location?.lat?.toFixed?.(5) || ret.location?.lat}, Lng: ${ret.location?.lng?.toFixed?.(5) || ret.location?.lng}`;
+    ret.latitude = ret.location?.lat;
+    ret.longitude = ret.location?.lng;
+    ret.upvotesCount = ret.voteCount;
+    return ret;
+  }
+});
+
+export default mongoose.model('Complaint', complaintSchema);
