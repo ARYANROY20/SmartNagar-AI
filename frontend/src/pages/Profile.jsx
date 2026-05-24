@@ -48,6 +48,7 @@ export default function Profile() {
       reader.onloadend = async () => {
         const img = new Image();
         img.onload = async () => {
+          // Store compact profile photos as data URLs to match backend profile storage.
           const canvas = document.createElement('canvas');
           const maxDim = 400; // Profile pics don't need to be massive
           let width = img.width;
@@ -96,7 +97,7 @@ export default function Profile() {
       if (Object.keys(updates).length > 0) {
         await updateUserProfile(user.uid, updates);
         
-        // Update Firebase Auth profile
+        // Keep Firebase displayName aligned with the Mongo profile.
         if (updates.name) {
           await updateProfile(user, {
             displayName: updates.name

@@ -39,6 +39,7 @@ const complaintSchema = new mongoose.Schema({
   dueDate: { type: Date, default: null },
   voteCount: { type: Number, default: 0 },
   comments: { type: [commentSchema], default: [] },
+  isArchived: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

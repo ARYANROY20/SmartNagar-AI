@@ -5,6 +5,8 @@ import path from 'path';
 if (!admin.apps.length) {
   const serviceAccountPath = path.resolve('serviceAccountKey.json');
 
+  // Prefer the local service account during development, but support hosted
+  // environments that provide Firebase credentials through the platform.
   if (existsSync(serviceAccountPath)) {
     const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
     admin.initializeApp({
@@ -25,6 +27,7 @@ export async function verifyFirebaseToken(req, res, next) {
 
   const idToken = authHeader.split('Bearer ')[1];
   try {
+    // Downstream controllers rely on req.user.uid/email/name from Firebase.
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     req.user = decodedToken;
     next();

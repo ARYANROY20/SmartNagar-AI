@@ -9,6 +9,7 @@ export function formatRelativeTime(timestamp) {
   if (!timestamp) return 'Just now';
   
   let date;
+  // Accept Firestore timestamps, plain epoch-ish objects, and ISO strings.
   if (timestamp?.toDate) {
     date = timestamp.toDate();
   } else if (timestamp?.seconds) {

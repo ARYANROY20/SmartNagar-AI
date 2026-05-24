@@ -21,6 +21,7 @@ export function AuthProvider({ children }) {
 
   const refreshUserData = async () => {
     if (!auth.currentUser) return null;
+    // Mongo stores app-specific profile fields that Firebase Auth does not own.
     const mongoUser = await syncUser();
     setRole(mongoUser.role);
     setUserData(mongoUser);
@@ -35,7 +36,8 @@ export function AuthProvider({ children }) {
           await refreshUserData();
         } catch (e) {
           console.error('User sync failed:', e);
-          setRole(firebaseUser.email === 'asadhasan1709@gmail.com' ? 'admin' : 'citizen');
+          // Keep the app usable while the backend is unavailable.
+          setRole('citizen');
         }
       } else {
         setRole(null);

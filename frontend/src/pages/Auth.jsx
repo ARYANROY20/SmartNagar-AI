@@ -32,7 +32,7 @@ export default function Auth() {
       await refreshUserData?.();
       navigate(-1);
     } catch (err) {
-      setError(err.message || 'An error occurred');
+      setError(err?.response?.data?.error || err.message || 'An error occurred');
     } finally {
       setIsSubmitting(false);
     }
@@ -49,7 +49,7 @@ export default function Auth() {
       await refreshUserData?.();
       navigate(-1);
     } catch (err) {
-      setError(err.message || "Failed to sign in with Google");
+      setError(err?.response?.data?.error || err.message || "Failed to sign in with Google");
     } finally {
       setIsSubmitting(false);
     }

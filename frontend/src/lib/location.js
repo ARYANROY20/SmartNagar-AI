@@ -14,6 +14,7 @@ export function getDevicePosition() {
 }
 
 export async function reverseGeocode(lat, lng) {
+  // Nominatim converts coordinates into a readable location label for reports.
   const url = new URL('https://nominatim.openstreetmap.org/reverse');
   url.searchParams.set('format', 'jsonv2');
   url.searchParams.set('lat', String(lat));

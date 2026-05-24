@@ -8,13 +8,14 @@ import {
   getComplaintById,
   updateComplaintStatus,
   updateComplaintAssignment,
+  updateComplaintArchive,
   voteOnComplaint,
   getComments,
   addComment
 } from '../controllers/complaintsController.js';
 
 const router = express.Router();
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ storage: multer.memoryStorage() });
 
 router.get('/', getComplaints);
 router.post('/analyze', verifyFirebaseToken, upload.single('image'), analyzeComplaintImage);
@@ -23,6 +24,7 @@ router.get('/:id/comments', getComments);
 router.post('/', verifyFirebaseToken, upload.single('image'), createComplaint);
 router.patch('/:id/status', verifyFirebaseToken, updateComplaintStatus);
 router.patch('/:id/assignment', verifyFirebaseToken, updateComplaintAssignment);
+router.patch('/:id/archive', verifyFirebaseToken, updateComplaintArchive);
 router.post('/:id/vote', verifyFirebaseToken, voteOnComplaint);
 router.post('/:id/comments', verifyFirebaseToken, addComment);
 

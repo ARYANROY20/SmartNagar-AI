@@ -1,9 +1,10 @@
 import axios from 'axios';
 import { auth } from '../lib/firebase.js';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || window.location.origin;
 
 function withAssetUrl(item) {
+  // Data URLs are already complete; old /uploads paths still get normalized.
   if (!item || !item.imageUrl || item.imageUrl.startsWith('http') || item.imageUrl.startsWith('data:')) {
     return item;
   }
@@ -13,6 +14,7 @@ function withAssetUrl(item) {
 async function getAuthHeader() {
   const user = auth.currentUser;
   if (!user) return {};
+  // Firebase ID tokens authorize protected Express routes.
   const token = await user.getIdToken();
   return { Authorization: `Bearer ${token}` };
 }

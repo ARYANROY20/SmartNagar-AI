@@ -2,35 +2,37 @@ import React from 'react';
 import { Activity, ArrowLeft, ArrowRight, Camera, Landmark, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const heroImage = 'https://lh3.googleusercontent.com/aida-public/AB6AXuDTkedNj97HAZb7Jw2fPmtNt1gdCxmOVIL67N5z9ZB_m6zNiy9RAOL_L3AV3hgjRzuP1IihI1_3B7s9bt7_BxRy8roaWxJGthhvykFNwYN_gTTp4hBD3hcVcf3idcirYu7ZT7vXNrzSx2YhilbiyY63w1PQp1WvU2HKJtISCXMjl4S8ykwUJ_3NBaGmFdz4RKbgBo64eV76SbkQmVBe2FgKCQtKmMzslCMxozKuhe-kKtGWgWHsT29huAIwb01ESUHQq2RKsOWme0w';
+const heroImage = import.meta.env.VITE_INTRO_HERO_IMAGE;
 
 export default function Intro() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-[#f7f9fb] text-[#191c1e] antialiased overflow-x-hidden relative">
-      <main className="min-h-screen flex flex-col items-center justify-start max-w-[420px] mx-auto bg-white relative">
+    <div className="min-h-screen bg-[var(--bg-secondary)] text-[var(--text-primary)] antialiased overflow-x-hidden relative">
+      <main className="min-h-screen flex flex-col items-center justify-start max-w-[420px] mx-auto bg-[var(--bg-card)] relative">
         <header className="relative w-full h-[397px] overflow-hidden">
           <div className="absolute inset-0 bg-[#004ac6]/10">
-            <img
-              alt="High-tech urban environment"
-              className="w-full h-full object-cover mix-blend-overlay opacity-60"
-              src={heroImage}
-            />
+            {heroImage && (
+              <img
+                alt="SmartNagar city"
+                className="w-full h-full object-cover mix-blend-overlay opacity-60"
+                src={heroImage}
+              />
+            )}
           </div>
-          <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-card)] via-transparent to-transparent" />
           <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
             <div className="bg-[#004ac6] p-4 rounded-xl shadow-lg mb-4">
               <Landmark className="w-12 h-12 text-white" fill="currentColor" />
             </div>
-            <h1 className="text-[30px] leading-[1.2] font-bold text-[#191c1e] mb-1 tracking-tight">SmartNagar AI</h1>
+            <h1 className="text-[30px] leading-[1.2] font-bold text-[var(--text-primary)] mb-1 tracking-tight">SmartNagar AI</h1>
             <p className="text-[14px] leading-[1.4] font-semibold text-[#004ac6] tracking-widest">EMPOWERING SMARTER CITIES THROUGH AI</p>
           </div>
         </header>
 
         <section className="w-full px-6 -mt-8 relative z-10">
-          <div className="bg-white rounded-xl shadow-sm border border-[#c3c6d7] p-6">
-            <p className="text-[16px] leading-relaxed text-[#434655] text-center">
+          <div className="bg-[var(--bg-card)] rounded-xl shadow-sm border border-[var(--border-color)] p-6">
+            <p className="text-[16px] leading-relaxed text-[var(--text-secondary)] text-center">
               The unified platform connecting citizens and administrators to solve urban issues faster through intelligent automation and real-time data insights.
             </p>
           </div>
@@ -65,7 +67,7 @@ export default function Intro() {
             Get Started
             <ArrowRight className="w-5 h-5" />
           </button>
-          <p className="mt-4 text-center text-[12px] leading-[1.4] text-[#737686]">
+          <p className="mt-4 text-center text-[12px] leading-[1.4] text-[var(--text-secondary)]">
             By continuing, you agree to our <button onClick={() => navigate('/terms')} className="text-[#004ac6] font-medium underline underline-offset-4">Terms of Service</button>.
           </p>
         </footer>
@@ -79,8 +81,8 @@ export function Terms() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-[#f7f9fb] text-[#191c1e] antialiased overflow-x-hidden">
-      <main className="min-h-screen max-w-[420px] mx-auto bg-white px-6 py-6">
+    <div className="min-h-screen bg-[var(--bg-secondary)] text-[var(--text-primary)] antialiased overflow-x-hidden">
+      <main className="min-h-screen max-w-[420px] mx-auto bg-[var(--bg-card)] px-6 py-6">
         <button
           onClick={() => navigate('/')}
           className="inline-flex items-center gap-2 text-sm font-semibold text-[#004ac6] mb-6"
@@ -94,10 +96,10 @@ export function Terms() {
             <Landmark className="w-7 h-7" />
           </div>
           <h1 className="text-[30px] leading-[1.2] font-bold tracking-tight">Terms of Service</h1>
-          <p className="text-[14px] leading-[1.5] text-[#434655] mt-2">SmartNagar AI civic reporting platform</p>
+          <p className="text-[14px] leading-[1.5] text-[var(--text-secondary)] mt-2">SmartNagar AI civic reporting platform</p>
         </div>
 
-        <div className="space-y-4 text-[14px] leading-[1.6] text-[#434655]">
+        <div className="space-y-4 text-[14px] leading-[1.6] text-[var(--text-secondary)]">
           <TermsSection title="1. Purpose">
             SmartNagar AI helps citizens report civic issues and helps administrators review, assign, and monitor resolution work. The platform is intended for genuine civic reporting and public-service coordination.
           </TermsSection>
@@ -138,8 +140,8 @@ export function Terms() {
 
 function TermsSection({ title, children }) {
   return (
-    <section className="bg-white rounded-xl border border-[#e0e3e5] shadow-sm p-4">
-      <h2 className="text-[16px] font-bold text-[#191c1e] mb-1">{title}</h2>
+    <section className="bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)] shadow-sm p-4">
+      <h2 className="text-[16px] font-bold text-[var(--text-primary)] mb-1">{title}</h2>
       <p>{children}</p>
     </section>
   );
@@ -147,13 +149,13 @@ function TermsSection({ title, children }) {
 
 function FeatureCard({ icon, iconClassName, title, description }) {
   return (
-    <div className="flex items-center gap-4 p-4 bg-white rounded-xl border border-slate-100 shadow-sm">
+    <div className="flex items-center gap-4 p-4 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)] shadow-sm">
       <div className={`w-12 h-12 flex items-center justify-center rounded-lg shrink-0 ${iconClassName}`}>
         {icon}
       </div>
       <div>
-        <h3 className="font-semibold text-[#191c1e] text-[18px] leading-[1.3]">{title}</h3>
-        <p className="text-[12px] leading-[1.4] text-[#434655]">{description}</p>
+        <h3 className="font-semibold text-[var(--text-primary)] text-[18px] leading-[1.3]">{title}</h3>
+        <p className="text-[12px] leading-[1.4] text-[var(--text-secondary)]">{description}</p>
       </div>
     </div>
   );

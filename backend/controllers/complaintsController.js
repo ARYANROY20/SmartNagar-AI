@@ -1,4 +1,3 @@
-import fs from 'fs';
 import Complaint from '../models/Complaint.js';
 import User from '../models/User.js';
 import Vote from '../models/Vote.js';
@@ -24,13 +23,15 @@ async function notifyComplaintOwner(userId, notification) {
   if (!userId) return;
 
   try {
+    // Upsert keeps notifications working even if an older complaint references
+    // a user record that has not been synced into Mongo yet.
     await User.findOneAndUpdate(
       { firebaseUid: userId },
       {
         $setOnInsert: {
           firebaseUid: userId,
-          email: 'unknown@example.com',
-          name: 'Anonymous',
+          email: userId,
+          name: userId,
           role: 'citizen',
           trustScore: 100
         },
@@ -52,11 +53,16 @@ export async function createComplaint(req, res) {
     let imageUrl = '';
 
     if (req.file) {
-      imageUrl = `/uploads/${req.file.filename}`;
+      const mimeType = req.file.mimetype;
+      const base64Data = req.file.buffer.toString('base64');
+      // Images are kept with the complaint document so no local uploads folder
+      // is required in production.
+      imageUrl = `data:${mimeType};base64,${base64Data}`;
 
       if (!category || !title || !priority) {
         try {
-          const imageData = fs.readFileSync(req.file.path, { encoding: 'base64' });
+          // AI only fills fields that the user did not provide manually.
+          const imageData = req.file.buffer.toString('base64');
           const aiResult = await analyzeIssueImage(imageData, req.file.mimetype);
           title = title || aiResult.title;
           category = category || aiResult.category;
@@ -68,7 +74,7 @@ export async function createComplaint(req, res) {
     }
 
     const complaint = new Complaint({
-      title: title || 'Civic issue report',
+      title: title || description || category || 'Reported issue',
       description,
       imageUrl,
       location: { lat: parseFloat(lat), lng: parseFloat(lng), address },
@@ -94,12 +100,10 @@ export async function analyzeComplaintImage(req, res) {
       return res.status(400).json({ error: 'Image is required' });
     }
 
-    const imageData = fs.readFileSync(req.file.path, { encoding: 'base64' });
+    const imageData = req.file.buffer.toString('base64');
     const aiResult = await analyzeIssueImage(imageData, req.file.mimetype);
-    fs.unlink(req.file.path, () => {});
     res.json(aiResult);
   } catch (err) {
-    if (req.file?.path) fs.unlink(req.file.path, () => {});
     console.error(err);
     res.status(500).json({ error: err.message });
   }
@@ -107,8 +111,16 @@ export async function analyzeComplaintImage(req, res) {
 
 export async function getComplaints(req, res) {
   try {
-    const { category, status, priority, userId, limit } = req.query;
+    const { category, status, priority, userId, limit, isArchived } = req.query;
     const filter = {};
+    // Normal views hide archived complaints unless the caller asks otherwise.
+    if (isArchived === 'true') {
+      filter.isArchived = true;
+    } else if (isArchived === 'all') {
+      // do nothing
+    } else {
+      filter.isArchived = { $ne: true };
+    }
     if (category) filter.category = category;
     if (status) filter.status = normalizeStatus(status);
     if (priority) filter.priority = priority;
@@ -126,6 +138,21 @@ export async function getComplaints(req, res) {
 export async function getComplaintById(req, res) {
   try {
     const complaint = await Complaint.findById(req.params.id);
+    if (!complaint) return res.status(404).json({ error: 'Not found' });
+    res.json(complaint);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function updateComplaintArchive(req, res) {
+  try {
+    const { isArchived } = req.body;
+    const complaint = await Complaint.findByIdAndUpdate(
+      req.params.id,
+      { isArchived: !!isArchived, updatedAt: new Date() },
+      { new: true }
+    );
     if (!complaint) return res.status(404).json({ error: 'Not found' });
     res.json(complaint);
   } catch (err) {
@@ -270,7 +297,7 @@ export async function addComment(req, res) {
   try {
     const comment = {
       userId: req.user.uid,
-      userName: req.body.userName || req.user.name || req.user.email || 'Anonymous Citizen',
+      userName: req.body.userName || req.user.name || req.user.email || req.user.uid,
       text: req.body.text
     };
     const complaint = await Complaint.findByIdAndUpdate(

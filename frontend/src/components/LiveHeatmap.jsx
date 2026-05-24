@@ -81,6 +81,7 @@ export default function LiveHeatmap({ issues, height = 'h-48' }) {
   const heatmapPoints = apiPoints.length > 0
     ? apiPoints.map(point => [point.lat, point.lng, point.intensity])
     : issues
+      // Fall back to the complaint list when the analytics endpoint is empty.
       .filter(issue => issue.latitude && issue.longitude)
       .map(issue => {
         let weight = 0.5;
@@ -91,7 +92,16 @@ export default function LiveHeatmap({ issues, height = 'h-48' }) {
 
   const center = deviceCenter || (heatmapPoints.length > 0
     ? [heatmapPoints[0][0], heatmapPoints[0][1]]
-    : [12.9716, 77.5946]);
+    : null);
+
+  if (!center) {
+    // Avoid showing a fake city center before we have real report or device data.
+    return (
+      <div className={`w-full ${height} bg-gray-900 rounded-lg overflow-hidden relative flex items-center justify-center text-white/70 text-xs font-medium`}>
+        No location data available yet
+      </div>
+    );
+  }
 
   return (
     <div className={`w-full ${height} bg-gray-900 rounded-lg overflow-hidden relative group`}>

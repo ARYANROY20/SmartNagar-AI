@@ -6,14 +6,18 @@ import {
   getUserProfile,
   updateUserProfile,
   getNotifications,
-  markNotificationsRead
+  markNotificationsRead,
+  anonymizeUser,
+  sendSupportMessage
 } from '../controllers/usersController.js';
 
 const router = express.Router();
 
 router.post('/sync', verifyFirebaseToken, syncUser);
 router.post('/admin/access', verifyFirebaseToken, requestAdminAccess);
+router.post('/support', verifyFirebaseToken, sendSupportMessage);
 router.get('/:uid', getUserProfile);
+router.post('/:uid/anonymize', verifyFirebaseToken, anonymizeUser);
 router.patch('/:uid', verifyFirebaseToken, updateUserProfile);
 router.get('/:uid/notifications', verifyFirebaseToken, getNotifications);
 router.patch('/:uid/notifications/read', verifyFirebaseToken, markNotificationsRead);

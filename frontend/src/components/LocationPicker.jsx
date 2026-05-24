@@ -30,12 +30,27 @@ function RecenterMap({ position }) {
 }
 
 export default function LocationPicker({ position, setPosition, address, setAddress, onConfirm }) {
-  const defaultPosition = [12.9716, 77.5946];
+  const [deviceCenter, setDeviceCenter] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    getDevicePosition()
+      .then(currentPosition => {
+        if (isMounted) setDeviceCenter(currentPosition);
+      })
+      .catch(error => {
+        console.warn('Device location unavailable for picker', error);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const choosePosition = async (nextPosition) => {
     setPosition(nextPosition);
     try {
+      // Keep the stored coordinates and the editable address in sync.
       const placeName = await reverseGeocode(nextPosition[0], nextPosition[1]);
       setAddress?.(placeName);
     } catch (error) {
@@ -54,6 +69,8 @@ export default function LocationPicker({ position, setPosition, address, setAddr
       setIsLocating(false);
     }
   };
+  
+  const mapCenter = position || deviceCenter;
 
   function MapClickHandler() {
     useMapEvents({
@@ -64,10 +81,28 @@ export default function LocationPicker({ position, setPosition, address, setAddr
     return null;
   }
 
+  if (!mapCenter) {
+    // Wait for real location data instead of centering the map on a hardcoded city.
+    return (
+      <div className="relative w-full h-64 rounded-2xl overflow-hidden shadow-inner border border-gray-200 bg-gray-900 flex flex-col items-center justify-center gap-3 text-center p-4">
+        <p className="text-sm font-medium text-white/80">Use your current location to open the map.</p>
+        <button
+          type="button"
+          onClick={useDeviceLocation}
+          disabled={isLocating}
+          className="bg-white text-gray-800 px-4 py-2 rounded-full font-semibold shadow-md border border-gray-100 hover:bg-gray-50 active:scale-95 transition-all text-xs flex items-center gap-1.5 disabled:opacity-70"
+        >
+          {isLocating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Crosshair className="w-3.5 h-3.5 text-blue-600" />}
+          Use my location
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="relative w-full h-64 rounded-2xl overflow-hidden shadow-inner border border-gray-200">
       <MapContainer
-        center={position || defaultPosition}
+        center={mapCenter}
         zoom={position ? 16 : 12}
         style={{ height: '100%', width: '100%', zIndex: 0 }}
         zoomControl={false}

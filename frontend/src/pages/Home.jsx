@@ -28,9 +28,21 @@ export default function Home() {
     };
   }, []);
 
-  const totalComplaints = issues.length > 0 ? issues.length * 10 : 0;
+  const totalComplaints = issues.length;
   const resolvedCount = issues.filter(i => i.status === 'Resolved').length;
   const pendingCount = issues.filter(i => i.status === 'Pending Review' || i.status === 'In Progress').length;
+  const urgentOrHighCount = issues.filter(i => i.priority === 'URGENT' || i.priority === 'HIGH').length;
+  const garbageCount = issues.filter(i => i.category === 'Garbage & Waste').length;
+  // Citizen insight cards use the current complaint set instead of static demo values.
+  const riskPercent = totalComplaints ? Math.round((urgentOrHighCount / totalComplaints) * 100) : 0;
+  const wastePercent = totalComplaints ? Math.round((garbageCount / totalComplaints) * 100) : 0;
+  const resourcePercent = totalComplaints ? Math.round((resolvedCount / totalComplaints) * 100) : 0;
+  const topIssueCounts = issues.reduce((acc, issue) => {
+    const key = issue.category || 'Reported Issues';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  const topIssueLabel = Object.entries(topIssueCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'No issue data';
   
   return (
     <div className="p-4 space-y-6 animate-in fade-in zoom-in-95 duration-300">
@@ -52,13 +64,13 @@ export default function Home() {
       <div className="grid grid-cols-2 gap-3">
         {role === 'admin' ? (
           <>
-            <MetricCard title="TOTAL COMPLAINTS" value={totalComplaints} icon={<FileText className="w-4 h-4 text-blue-500" />} trend="~12% increase from last week" trendPositive={false} />
-            <MetricCard title="RESOLVED (24h)" value={resolvedCount} icon={<ShieldAlert className="w-4 h-4 text-green-500" />} trend="On track" trendPositive={true} />
+            <MetricCard title="TOTAL COMPLAINTS" value={totalComplaints} icon={<FileText className="w-4 h-4 text-blue-500" />} trend={`${pendingCount} active`} trendPositive={false} />
+            <MetricCard title="RESOLVED" value={resolvedCount} icon={<ShieldAlert className="w-4 h-4 text-green-500" />} trend={`${resourcePercent}% resolved`} trendPositive={true} />
           </>
         ) : (
           <>
             <MetricCard title="Pending Alerts" value={pendingCount} icon={<AlertTriangle className="w-4 h-4 text-orange-500" />} />
-            <MetricCard title="Resolved 24h" value={resolvedCount} icon={<ShieldAlert className="w-4 h-4 text-green-500" />} />
+            <MetricCard title="Resolved" value={resolvedCount} icon={<ShieldAlert className="w-4 h-4 text-green-500" />} />
           </>
         )}
       </div>
@@ -82,11 +94,11 @@ export default function Home() {
              </div>
              <div>
                <div className="flex justify-between items-center">
-                 <h4 className="text-xs font-bold text-red-800 uppercase tracking-wider">Pothole Probability</h4>
-                 <span className="text-[9px] font-bold px-1.5 py-0.5 bg-red-200 text-red-800 rounded">CRITICAL</span>
+                 <h4 className="text-xs font-bold text-red-800 uppercase tracking-wider">High Priority Share</h4>
+                 <span className="text-[9px] font-bold px-1.5 py-0.5 bg-red-200 text-red-800 rounded">{urgentOrHighCount} REPORTS</span>
                </div>
-               <p className="text-2xl font-bold text-red-700 mt-1">84%</p>
-               <p className="text-xs text-red-600 mt-1">Sector 4 • Monsoon Impact Zone</p>
+               <p className="text-2xl font-bold text-red-700 mt-1">{riskPercent}%</p>
+               <p className="text-xs text-red-600 mt-1">{topIssueLabel}</p>
              </div>
            </div>
 
@@ -94,14 +106,14 @@ export default function Home() {
              <div className="bg-green-50 p-3 rounded-xl border border-green-100">
                <div className="text-green-600 mb-1"><CloudRain className="w-4 h-4"/></div>
                <div className="text-xs text-green-800 font-medium">Waste Level</div>
-               <div className="text-lg font-bold text-green-700">62%</div>
-               <div className="text-[10px] text-green-600">Optimizing Routes</div>
+               <div className="text-lg font-bold text-green-700">{wastePercent}%</div>
+               <div className="text-[10px] text-green-600">{garbageCount} waste reports</div>
              </div>
              <div className="bg-blue-50 p-3 rounded-xl border border-blue-100">
                <div className="text-blue-600 mb-1"><Zap className="w-4 h-4"/></div>
                <div className="text-xs text-blue-800 font-medium">Resource Opt.</div>
-               <div className="text-lg font-bold text-blue-700">92%</div>
-               <div className="text-[10px] text-blue-600">Peak Efficiency</div>
+               <div className="text-lg font-bold text-blue-700">{resourcePercent}%</div>
+               <div className="text-[10px] text-blue-600">{resolvedCount} resolved reports</div>
              </div>
            </div>
         </div>
@@ -111,16 +123,24 @@ export default function Home() {
         <div className="space-y-3">
            <div className="flex justify-between items-center">
              <h3 className="font-semibold text-gray-800 text-sm">Recent Complaints</h3>
-             <span className="text-xs text-gray-500 font-medium">{issues.length} Live Today</span>
+             <span className="text-xs text-gray-500 font-medium">{issues.length} Live</span>
            </div>
            
            <div className="space-y-2">
              {issues.length === 0 && <p className="text-sm text-gray-500 p-3 bg-white rounded-xl border border-gray-100 shadow-sm text-center">No reports yet.</p>}
              {issues.map(issue => (
                <div key={issue.id} className="bg-white border border-gray-100 p-3 rounded-xl shadow-sm flex items-start gap-3">
-                 <div className="mt-1 p-2 bg-orange-50 text-orange-600 rounded-lg shrink-0">
-                   <AlertTriangle className="w-4 h-4" />
-                 </div>
+                 {issue.imageUrl ? (
+                   <img
+                     src={issue.imageUrl}
+                     alt={issue.title || 'Complaint image'}
+                     className="w-14 h-14 rounded-lg object-cover bg-gray-100 shrink-0"
+                   />
+                 ) : (
+                   <div className="w-14 h-14 rounded-lg bg-gray-100 shrink-0 flex items-center justify-center text-gray-400">
+                     <AlertTriangle className="w-5 h-5" />
+                   </div>
+                 )}
                  <div className="flex-1 min-w-0">
                    <div className="flex justify-between items-start gap-2">
                      <h4 className="font-medium text-gray-900 text-sm truncate">{issue.title}</h4>

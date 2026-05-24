@@ -34,7 +34,7 @@ export default function CommentsSection({ issueId }) {
 
     setIsSubmitting(true);
     try {
-      const comment = await addComment(issueId, newComment.trim(), userData?.name || user.displayName || 'Anonymous Citizen');
+      const comment = await addComment(issueId, newComment.trim(), userData?.name || user.displayName || user.email || user.uid);
       setComments(prev => [...prev, comment]);
       setNewComment('');
     } catch (error) {

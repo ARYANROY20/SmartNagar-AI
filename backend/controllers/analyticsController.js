@@ -3,6 +3,7 @@ import Complaint from '../models/Complaint.js';
 export async function getHeatmapData(req, res) {
   try {
     const complaints = await Complaint.find({}, 'location priority');
+    // Priority becomes heat intensity so urgent issues stand out on the map.
     const points = complaints.map(c => ({
       lat: c.location.lat,
       lng: c.location.lng,
@@ -16,6 +17,7 @@ export async function getHeatmapData(req, res) {
 
 export async function getSummary(req, res) {
   try {
+    // Run independent aggregate queries together to keep the dashboard snappy.
     const [byCategory, byStatus, total] = await Promise.all([
       Complaint.aggregate([{ $group: { _id: '$category', count: { $sum: 1 } } }]),
       Complaint.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),

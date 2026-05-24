@@ -13,26 +13,29 @@ import Report from './pages/Report';
 import Auth from './pages/Auth';
 import AdminDashboard from './pages/AdminDashboard';
 import Intro, { Terms } from './pages/Intro';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route index element={<Intro />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/app" element={<AppLayout />}>
-            <Route index element={<Home />} />
-            <Route path="report" element={<Report />} />
-            <Route path="track" element={<Track />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="admin" element={<AdminDashboard />} />
-            <Route path="*" element={<Navigate to="/app" replace />} />
-          </Route>
-          <Route path="/auth" element={<Auth />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route index element={<Intro />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/app" element={<AppLayout />}>
+              <Route index element={<Home />} />
+              <Route path="report" element={<Report />} />
+              <Route path="track" element={<Track />} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="admin" element={<AdminDashboard />} />
+              <Route path="*" element={<Navigate to="/app" replace />} />
+            </Route>
+            <Route path="/auth" element={<Auth />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

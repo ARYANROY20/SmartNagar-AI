@@ -144,7 +144,7 @@ export default function Report() {
 
       const reader = new FileReader();
       reader.onloadend = async () => {
-        // Compress image using canvas
+        // Compress before preview/upload to keep Mongo documents reasonably small.
         const img = new Image();
         img.onload = async () => {
           const canvas = document.createElement('canvas');
@@ -179,6 +179,7 @@ export default function Report() {
 
       try {
         setIsAnalyzingImage(true);
+        // AI suggestions are optional and can still be edited before submit.
         const aiResult = await analyzeIssueImage(file);
         if (aiResult?.title) setTitle(aiResult.title);
         if (aiResult?.category) setCategory(aiResult.category);
@@ -196,6 +197,7 @@ export default function Report() {
     setIsSubmitting(true);
     setSubmitError('');
     try {
+      // FormData keeps image upload compatible with the backend multer handler.
       const formData = new FormData();
       if (title.trim()) formData.append('title', title.trim());
       formData.append('description', description.trim());

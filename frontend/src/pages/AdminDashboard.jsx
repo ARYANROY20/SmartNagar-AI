@@ -93,6 +93,7 @@ export default function AdminDashboard() {
 
   const updateStatus = async (issueId, newStatus) => {
     setActionError('');
+    // Optimistic update keeps the admin workflow responsive; reload on failure.
     setIssues(prev => prev.map(issue => issue.id === issueId ? { ...issue, status: newStatus } : issue));
     try {
       const updatedIssue = await updateComplaintStatus(issueId, newStatus);
@@ -112,6 +113,7 @@ export default function AdminDashboard() {
   const saveAssignment = async (issue) => {
     setActionError('');
     try {
+      // Drafts let admins edit assignment fields without mutating saved data.
       const draft = getAssignmentDraft(issue);
       const updatedIssue = await updateComplaintAssignment(issue.id, draft);
       setIssues(prev => prev.map(item => item.id === issue.id ? updatedIssue : item));
@@ -247,12 +249,18 @@ export default function AdminDashboard() {
             return (
             <div key={issue.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3">
               <div className="flex gap-3">
-                <img 
-                  src={issue.imageUrl || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&q=80&w=400'} 
-                  alt="Issue" 
-                  className={cn("w-16 h-16 rounded-xl object-cover bg-gray-100 flex-shrink-0", issue.imageUrl ? "cursor-pointer hover:opacity-80 transition-opacity" : "")}
-                  onClick={() => issue.imageUrl && setSelectedImage(issue.imageUrl)}
-                />
+                {issue.imageUrl ? (
+                  <img 
+                    src={issue.imageUrl} 
+                    alt="Issue" 
+                    className="w-16 h-16 rounded-xl object-cover bg-gray-100 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => setSelectedImage(issue.imageUrl)}
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-xl bg-gray-100 flex-shrink-0 flex items-center justify-center text-[10px] font-semibold text-gray-400 text-center px-2">
+                    No image
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <h4 className="font-bold text-gray-900 truncate">{issue.title || issue.category}</h4>
                   <p className="text-sm text-gray-500 truncate">{issue.category}</p>

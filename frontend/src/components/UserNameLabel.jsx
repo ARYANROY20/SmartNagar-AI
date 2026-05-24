@@ -12,7 +12,7 @@ export default function UserNameLabel({ userId }) {
       try {
         const user = await getUserProfile(userId);
         if (isMounted) {
-          setUserName(user.name || 'Anonymous');
+          setUserName(user.name || user.email || user.firebaseUid);
         }
       } catch (error) {
         console.error('Could not fetch user name for', userId);
