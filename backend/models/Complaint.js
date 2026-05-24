@@ -7,6 +7,13 @@ const commentSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+const timelineSchema = new mongoose.Schema({
+  status: { type: String, required: true },
+  message: { type: String, required: true },
+  actor: { type: String, default: 'System' },
+  createdAt: { type: Date, default: Date.now }
+});
+
 const complaintSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, default: '' },
@@ -37,8 +44,14 @@ const complaintSchema = new mongoose.Schema({
   assignedDepartment: { type: String, default: '' },
   taskNotes: { type: String, default: '' },
   dueDate: { type: Date, default: null },
+  slaDueDate: { type: Date, default: null },
+  resolvedAt: { type: Date, default: null },
+  resolutionImageUrl: { type: String, default: '' },
+  resolutionNote: { type: String, default: '' },
+  ward: { type: String, default: '' },
   voteCount: { type: Number, default: 0 },
   comments: { type: [commentSchema], default: [] },
+  timeline: { type: [timelineSchema], default: [] },
   isArchived: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
@@ -56,6 +69,7 @@ complaintSchema.set('toJSON', {
     ret.latitude = ret.location?.lat;
     ret.longitude = ret.location?.lng;
     ret.upvotesCount = ret.voteCount;
+    ret.isOverdue = !!ret.slaDueDate && !['Resolved', 'Rejected'].includes(ret.status) && new Date(ret.slaDueDate) < new Date();
     return ret;
   }
 });

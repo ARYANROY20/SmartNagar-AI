@@ -77,6 +77,11 @@ export async function getComplaints(filters = {}) {
   return res.data.map(withAssetUrl);
 }
 
+export async function getDuplicateComplaints(filters = {}) {
+  const res = await axios.get(`${BASE_URL}/api/complaints/duplicates`, { params: filters });
+  return res.data;
+}
+
 export async function getComplaintById(id) {
   const res = await axios.get(`${BASE_URL}/api/complaints/${id}`);
   return withAssetUrl(res.data);
@@ -91,6 +96,14 @@ export async function updateComplaintStatus(id, status) {
 export async function updateComplaintAssignment(id, assignment) {
   const headers = await getAuthHeader();
   const res = await axios.patch(`${BASE_URL}/api/complaints/${id}/assignment`, assignment, { headers });
+  return withAssetUrl(res.data);
+}
+
+export async function updateResolutionProof(id, formData) {
+  const headers = await getAuthHeader();
+  const res = await axios.patch(`${BASE_URL}/api/complaints/${id}/resolution`, formData, {
+    headers: { ...headers, 'Content-Type': 'multipart/form-data' }
+  });
   return withAssetUrl(res.data);
 }
 
@@ -118,5 +131,10 @@ export async function getHeatmapData() {
 
 export async function getAnalyticsSummary() {
   const res = await axios.get(`${BASE_URL}/api/analytics/summary`);
+  return res.data;
+}
+
+export async function getWardAnalytics() {
+  const res = await axios.get(`${BASE_URL}/api/analytics/wards`);
   return res.data;
 }

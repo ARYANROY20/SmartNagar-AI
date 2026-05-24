@@ -19,6 +19,90 @@ function departmentForCategory(category) {
   return departments[category] || 'Public Infrastructure';
 }
 
+function slaHoursFor(priority, category, text = '') {
+  const priorityHours = {
+    URGENT: 18,
+    HIGH: 36,
+    MEDIUM: 72,
+    LOW: 120
+  };
+  const categoryMultiplier = {
+    'Electrical & Streetlights': 0.65,
+    'Water & Sanitation': 0.8,
+    'Road Maintenance': 1,
+    'Garbage & Waste': 1.15,
+    'Public Infrastructure': 1.25
+  };
+  const emergencyPattern = /\b(exposed wire|fallen wire|electric shock|flood|sewage overflow|open manhole|blocked drain|major accident|fire|collapsed|dangerous)\b/i;
+  const accessibilityPattern = /\b(school|hospital|main road|junction|market|elderly|children|ambulance|traffic)\b/i;
+  let hours = priorityHours[priority] || priorityHours.MEDIUM;
+  hours *= categoryMultiplier[category] || 1;
+  if (emergencyPattern.test(text)) hours *= 0.55;
+  if (accessibilityPattern.test(text)) hours *= 0.8;
+  return Math.max(6, Math.round(hours));
+}
+
+function dueDateFor(priority, category, text = '', from = new Date()) {
+  return new Date(from.getTime() + slaHoursFor(priority, category, text) * 60 * 60 * 1000);
+}
+
+function extractWard(address = '') {
+  const wardMatch = address.match(/\b(?:ward|zone|sector)\s*[-:#]?\s*([a-z0-9 ]{1,40})/i);
+  if (wardMatch) return wardMatch[0].replace(/\s+/g, ' ').trim();
+  const parts = address.split(',').map(part => part.trim()).filter(Boolean);
+  return parts.length > 1 ? parts[1] : parts[0] || 'Unmapped Ward';
+}
+
+function distanceKm(aLat, aLng, bLat, bLng) {
+  const toRad = value => (Number(value) * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const dLat = toRad(bLat - aLat);
+  const dLng = toRad(bLng - aLng);
+  const lat1 = toRad(aLat);
+  const lat2 = toRad(bLat);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * earthRadiusKm * Math.asin(Math.sqrt(h));
+}
+
+function titleSimilarity(a = '', b = '') {
+  const wordsA = new Set(a.toLowerCase().split(/\W+/).filter(word => word.length > 2));
+  const wordsB = new Set(b.toLowerCase().split(/\W+/).filter(word => word.length > 2));
+  if (!wordsA.size || !wordsB.size) return 0;
+  const overlap = [...wordsA].filter(word => wordsB.has(word)).length;
+  return overlap / Math.max(wordsA.size, wordsB.size);
+}
+
+async function findSimilarComplaints({ lat, lng, category, title }) {
+  const parsedLat = Number(lat);
+  const parsedLng = Number(lng);
+  if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng)) return [];
+
+  const candidates = await Complaint.find({
+    isArchived: { $ne: true },
+    status: { $nin: ['Resolved', 'Rejected'] },
+    ...(category ? { category } : {})
+  }).limit(100);
+
+  return candidates
+    .map(complaint => ({
+      complaint,
+      distance: distanceKm(parsedLat, parsedLng, complaint.location?.lat, complaint.location?.lng),
+      similarity: titleSimilarity(title, complaint.title)
+    }))
+    .filter(item => item.distance <= 0.5 && (!title || item.similarity >= 0.25))
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, 5)
+    .map(item => ({
+      id: item.complaint.id,
+      title: item.complaint.title,
+      category: item.complaint.category,
+      status: item.complaint.status,
+      locationName: item.complaint.location?.address,
+      distanceKm: Number(item.distance.toFixed(2)),
+      createdAt: item.complaint.createdAt
+    }));
+}
+
 async function notifyComplaintOwner(userId, notification) {
   if (!userId) return;
 
@@ -73,23 +157,46 @@ export async function createComplaint(req, res) {
       }
     }
 
+    const normalizedPriority = priority?.toUpperCase?.() || 'MEDIUM';
+    const normalizedCategory = category || 'Public Infrastructure';
+    const now = new Date();
+    const duplicateCandidates = await findSimilarComplaints({ lat, lng, category, title });
     const complaint = new Complaint({
       title: title || description || category || 'Reported issue',
       description,
       imageUrl,
       location: { lat: parseFloat(lat), lng: parseFloat(lng), address },
-      category: category || 'Public Infrastructure',
-      assignedDepartment: departmentForCategory(category || 'Public Infrastructure'),
-      priority: priority?.toUpperCase?.() || 'MEDIUM',
+      category: normalizedCategory,
+      assignedDepartment: departmentForCategory(normalizedCategory),
+      priority: normalizedPriority,
       status: 'Pending Review',
+      slaDueDate: dueDateFor(normalizedPriority, normalizedCategory, `${title || ''} ${description || ''}`, now),
+      ward: extractWard(address),
       userId: req.user.uid,
-      userName: req.user.name || req.user.email
+      userName: req.user.name || req.user.email,
+      timeline: [{
+        status: 'Pending Review',
+        message: 'Complaint reported by citizen',
+        actor: req.user.name || req.user.email || req.user.uid,
+        createdAt: now
+      }]
     });
 
     await complaint.save();
-    res.status(201).json(complaint);
+    const response = complaint.toJSON();
+    response.duplicateCandidates = duplicateCandidates;
+    res.status(201).json(response);
   } catch (err) {
     console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function getDuplicateComplaints(req, res) {
+  try {
+    const duplicates = await findSimilarComplaints(req.query);
+    res.json(duplicates);
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 }
@@ -169,7 +276,20 @@ export async function updateComplaintStatus(req, res) {
 
     const complaint = await Complaint.findByIdAndUpdate(
       req.params.id,
-      { status: newStatus, updatedAt: new Date() },
+      {
+        $set: {
+          status: newStatus,
+          resolvedAt: newStatus === 'Resolved' ? new Date() : oldComplaint.resolvedAt,
+          updatedAt: new Date()
+        },
+        $push: {
+          timeline: {
+            status: newStatus,
+            message: `Status changed to ${newStatus}`,
+            actor: req.user.name || req.user.email || req.user.uid
+          }
+        }
+      },
       { new: true }
     );
 
@@ -224,15 +344,24 @@ export async function updateComplaintAssignment(req, res) {
     if (!existingComplaint) return res.status(404).json({ error: 'Not found' });
 
     const update = {
-      assignedTo: assignedTo || '',
-      assignedDepartment: assignedDepartment || departmentForCategory(existingComplaint.category),
-      taskNotes: taskNotes || '',
-      dueDate: dueDate ? new Date(dueDate) : null,
-      updatedAt: new Date()
+      $set: {
+        assignedTo: assignedTo || '',
+        assignedDepartment: assignedDepartment || departmentForCategory(existingComplaint.category),
+        taskNotes: taskNotes || '',
+        dueDate: dueDate ? new Date(dueDate) : null,
+        updatedAt: new Date()
+      },
+      $push: {
+        timeline: {
+          status: 'Assigned',
+          message: `Assigned to ${assignedTo || assignedDepartment || departmentForCategory(existingComplaint.category)}`,
+          actor: req.user.name || req.user.email || req.user.uid
+        }
+      }
     };
 
     if ((assignedTo || assignedDepartment) && !['Resolved', 'Rejected'].includes(existingComplaint.status)) {
-      update.status = 'Assigned';
+      update.$set.status = 'Assigned';
     }
 
     const complaint = await Complaint.findByIdAndUpdate(
@@ -243,7 +372,7 @@ export async function updateComplaintAssignment(req, res) {
 
     if (!complaint) return res.status(404).json({ error: 'Not found' });
 
-    if (complaint.userId && (assignedTo || assignedDepartment || update.assignedDepartment)) {
+    if (complaint.userId && (assignedTo || assignedDepartment || update.$set.assignedDepartment)) {
       await notifyComplaintOwner(complaint.userId, {
         title: 'Complaint Assigned',
         message: `Your complaint "${complaint.title || complaint.category}" has been assigned to ${complaint.assignedDepartment || 'the responsible department'}.`,
@@ -251,6 +380,49 @@ export async function updateComplaintAssignment(req, res) {
         complaintId: complaint.id
       });
     }
+
+    res.json(complaint);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function updateResolutionProof(req, res) {
+  try {
+    const { note } = req.body;
+    let resolutionImageUrl = '';
+    if (req.file) {
+      const mimeType = req.file.mimetype;
+      const base64Data = req.file.buffer.toString('base64');
+      resolutionImageUrl = `data:${mimeType};base64,${base64Data}`;
+    }
+
+    const update = {
+      $set: {
+        resolutionNote: note || '',
+        resolvedAt: new Date(),
+        status: 'Resolved',
+        updatedAt: new Date()
+      },
+      $push: {
+        timeline: {
+          status: 'Resolved',
+          message: 'Resolution proof uploaded',
+          actor: req.user.name || req.user.email || req.user.uid
+        }
+      }
+    };
+    if (resolutionImageUrl) update.$set.resolutionImageUrl = resolutionImageUrl;
+
+    const complaint = await Complaint.findByIdAndUpdate(req.params.id, update, { new: true });
+    if (!complaint) return res.status(404).json({ error: 'Not found' });
+
+    await notifyComplaintOwner(complaint.userId, {
+      title: 'Resolution Proof Added',
+      message: `Resolution proof has been uploaded for "${complaint.title || complaint.category}".`,
+      unread: true,
+      complaintId: complaint.id
+    });
 
     res.json(complaint);
   } catch (err) {

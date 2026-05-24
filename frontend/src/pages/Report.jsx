@@ -3,7 +3,7 @@ import { Camera, Crosshair, ChevronDown, CheckCircle2, ShieldAlert, Sparkles, Lo
 import LocationPicker from '../components/LocationPicker';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { analyzeIssueImage, submitComplaint } from '../services/api.js';
+import { analyzeIssueImage, getDuplicateComplaints, submitComplaint } from '../services/api.js';
 import { getDevicePosition, reverseGeocode } from '../lib/location.js';
 
 import exifr from 'exifr';
@@ -28,6 +28,7 @@ export default function Report() {
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [exifDebug, setExifDebug] = useState(null);
   const [submitError, setSubmitError] = useState('');
+  const [duplicateCandidates, setDuplicateCandidates] = useState([]);
   const fileInputRef = useRef(null);
 
   const updatePositionWithAddress = async (nextPosition, source = 'device') => {
@@ -71,6 +72,33 @@ export default function Report() {
       cancelled = true;
     };
   }, [user]);
+
+  useEffect(() => {
+    if (!position || !category) {
+      setDuplicateCandidates([]);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        const duplicates = await getDuplicateComplaints({
+          lat: position[0],
+          lng: position[1],
+          category,
+          title
+        });
+        if (!cancelled) setDuplicateCandidates(duplicates);
+      } catch (error) {
+        console.error('Could not check duplicate complaints', error);
+      }
+    }, 500);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [position, category, title]);
 
   const startDictation = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -209,7 +237,8 @@ export default function Report() {
       if (imageFile) {
         formData.append('image', imageFile);
       }
-      await submitComplaint(formData);
+      const submittedComplaint = await submitComplaint(formData);
+      setDuplicateCandidates(submittedComplaint.duplicateCandidates || []);
       setIsSubmitted(true);
       setTimeout(() => {
         setIsSubmitted(false);
@@ -400,6 +429,17 @@ export default function Report() {
       </div>
 
       <div className="mt-8 mb-2">
+        {duplicateCandidates.length > 0 && (
+          <div className="mb-3 bg-amber-50 border border-amber-100 text-amber-800 text-xs font-medium p-3 rounded-xl">
+            <div className="font-bold mb-1">Possible duplicate nearby</div>
+            {duplicateCandidates.slice(0, 2).map(item => (
+              <div key={item.id} className="flex justify-between gap-2 py-1">
+                <span className="truncate">{item.title}</span>
+                <span className="shrink-0">{item.distanceKm} km</span>
+              </div>
+            ))}
+          </div>
+        )}
         {submitError && (
           <div className="mb-3 bg-red-50 border border-red-100 text-red-600 text-xs font-medium p-3 rounded-xl text-center">
             {submitError}

@@ -28,3 +28,45 @@ export async function getSummary(req, res) {
     res.status(500).json({ error: err.message });
   }
 }
+
+export async function getWardAnalytics(req, res) {
+  try {
+    const wards = await Complaint.aggregate([
+      { $match: { isArchived: { $ne: true } } },
+      {
+        $group: {
+          _id: { $ifNull: ['$ward', 'Unmapped Ward'] },
+          total: { $sum: 1 },
+          resolved: { $sum: { $cond: [{ $eq: ['$status', 'Resolved'] }, 1, 0] } },
+          overdue: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $not: [{ $in: ['$status', ['Resolved', 'Rejected']] }] },
+                    { $lt: ['$slaDueDate', new Date()] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          urgent: { $sum: { $cond: [{ $in: ['$priority', ['URGENT', 'HIGH']] }, 1, 0] } }
+        }
+      },
+      { $sort: { total: -1 } },
+      { $limit: 8 }
+    ]);
+
+    res.json(wards.map(ward => ({
+      ward: ward._id || 'Unmapped Ward',
+      total: ward.total,
+      resolved: ward.resolved,
+      overdue: ward.overdue,
+      urgent: ward.urgent
+    })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}

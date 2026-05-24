@@ -180,6 +180,48 @@ export default function Track() {
                     </div>
                   </div>
                 )}
+
+                {(issue.imageUrl || issue.resolutionImageUrl) && (
+                  <div className="mb-4">
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Before / After</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <div className="text-[10px] text-gray-500 mb-1">Reported</div>
+                        {issue.imageUrl ? (
+                          <img src={issue.imageUrl} alt="Reported issue" className="h-24 w-full rounded-xl object-cover bg-gray-100" />
+                        ) : (
+                          <div className="h-24 rounded-xl bg-gray-100 text-gray-400 text-xs flex items-center justify-center">No image</div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-gray-500 mb-1">Resolved</div>
+                        {issue.resolutionImageUrl ? (
+                          <img src={issue.resolutionImageUrl} alt="Resolved issue" className="h-24 w-full rounded-xl object-cover bg-gray-100" />
+                        ) : (
+                          <div className="h-24 rounded-xl bg-gray-100 text-gray-400 text-xs flex items-center justify-center">Pending proof</div>
+                        )}
+                      </div>
+                    </div>
+                    {issue.resolutionNote && <p className="text-xs text-gray-600 mt-2">{issue.resolutionNote}</p>}
+                  </div>
+                )}
+
+                {issue.timeline?.length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Timeline</h4>
+                    <div className="space-y-2">
+                      {issue.timeline.map(item => (
+                        <div key={item.id || item._id || `${item.status}-${item.createdAt}`} className="flex gap-2 text-xs">
+                          <span className="mt-1 w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                          <div>
+                            <p className="font-semibold text-gray-800">{item.message}</p>
+                            <p className="text-[10px] text-gray-500">{item.status} • {formatRelativeTime(item.createdAt)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 
                 <CommentsSection issueId={issue.id} />
               </div>

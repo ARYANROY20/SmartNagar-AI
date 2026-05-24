@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { AlertCircle, CheckCircle2, Clock, ListTodo, Map as MapIcon, BarChart3, Settings, ShieldAlert, ChevronRight, Activity, ArrowUpCircle, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, ListTodo, Map as MapIcon, BarChart3, Settings, ShieldAlert, ChevronRight, Activity, ArrowUpCircle, X, Timer, Upload, MapPinned } from 'lucide-react';
 import { cn } from '../lib/utils';
 import LiveHeatmap from '../components/LiveHeatmap';
 import UserNameLabel from '../components/UserNameLabel';
-import { getComplaints, updateComplaintAssignment, updateComplaintStatus } from '../services/api.js';
+import { getComplaints, getWardAnalytics, updateComplaintAssignment, updateComplaintStatus, updateResolutionProof } from '../services/api.js';
 
 const categories = ['All', 'Road Maintenance', 'Water & Sanitation', 'Electrical & Streetlights', 'Garbage & Waste', 'Public Infrastructure'];
 const priorities = ['All', 'LOW', 'MEDIUM', 'HIGH', 'URGENT'];
@@ -22,6 +22,14 @@ function departmentForCategory(category) {
   return map[category] || 'Public Infrastructure';
 }
 
+function formatSlaLabel(issue) {
+  if (!issue.slaDueDate) return 'SLA not set';
+  const diffMs = new Date(issue.slaDueDate).getTime() - Date.now();
+  const absHours = Math.max(1, Math.round(Math.abs(diffMs) / 3600000));
+  const value = absHours < 48 ? `${absHours}h` : `${Math.round(absHours / 24)}d`;
+  return diffMs < 0 ? `Overdue by ${value}` : `Due in ${value}`;
+}
+
 export default function AdminDashboard() {
   const { role, loading } = useAuth();
   const [issues, setIssues] = useState([]);
@@ -30,6 +38,8 @@ export default function AdminDashboard() {
   const [priorityFilter, setPriorityFilter] = useState('All');
   const [locationFilter, setLocationFilter] = useState('');
   const [assignmentDrafts, setAssignmentDrafts] = useState({});
+  const [resolutionDrafts, setResolutionDrafts] = useState({});
+  const [wardAnalytics, setWardAnalytics] = useState([]);
   const [actionError, setActionError] = useState('');
 
   useEffect(() => {
@@ -40,6 +50,8 @@ export default function AdminDashboard() {
       try {
         const data = await getComplaints();
         if (isMounted) setIssues(data);
+        const wardData = await getWardAnalytics();
+        if (isMounted) setWardAnalytics(wardData);
       } catch (error) {
         console.error('Could not load complaints', error);
       }
@@ -65,6 +77,7 @@ export default function AdminDashboard() {
   // High priority count
   const urgentIssues = issues.filter(i => i.priority === 'URGENT' || i.priority === 'HIGH').length;
   const assignedIssues = issues.filter(i => i.assignedTo || i.status === 'Assigned').length;
+  const overdueIssues = issues.filter(i => i.isOverdue).length;
 
   const filteredIssues = issues.filter(issue => {
     const matchesCategory = categoryFilter === 'All' || issue.category === categoryFilter;
@@ -86,6 +99,16 @@ export default function AdminDashboard() {
       ...prev,
       [issue.id]: {
         ...getAssignmentDraft(issue),
+        ...updates
+      }
+    }));
+  };
+
+  const updateResolutionDraft = (issueId, updates) => {
+    setResolutionDrafts(prev => ({
+      ...prev,
+      [issueId]: {
+        ...(prev[issueId] || { note: '', file: null }),
         ...updates
       }
     }));
@@ -125,6 +148,27 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Could not assign complaint', error);
       setActionError(error?.response?.data?.error || 'Could not save assignment. Please try again.');
+    }
+  };
+
+  const saveResolutionProof = async (issue) => {
+    const draft = resolutionDrafts[issue.id];
+    if (!draft?.file && !draft?.note?.trim()) return;
+    setActionError('');
+    try {
+      const formData = new FormData();
+      if (draft.note?.trim()) formData.append('note', draft.note.trim());
+      if (draft.file) formData.append('image', draft.file);
+      const updatedIssue = await updateResolutionProof(issue.id, formData);
+      setIssues(prev => prev.map(item => item.id === issue.id ? updatedIssue : item));
+      setResolutionDrafts(prev => {
+        const next = { ...prev };
+        delete next[issue.id];
+        return next;
+      });
+    } catch (error) {
+      console.error('Could not upload resolution proof', error);
+      setActionError(error?.response?.data?.error || 'Could not upload resolution proof. Please try again.');
     }
   };
 
@@ -185,6 +229,35 @@ export default function AdminDashboard() {
           bgColor="bg-indigo-50"
           textColor="text-indigo-700"
         />
+        <MetricCard
+          title="SLA Overdue"
+          value={overdueIssues}
+          icon={<Timer className="w-5 h-5 text-red-500" />}
+          bgColor="bg-red-50"
+          textColor="text-red-700"
+        />
+      </div>
+
+      <div className="space-y-3">
+        <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+          <MapPinned className="w-5 h-5 text-indigo-500" />
+          Ward Analytics
+        </h3>
+        <div className="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 space-y-2">
+          {wardAnalytics.length === 0 && <p className="text-sm text-gray-500 text-center py-2">No ward data yet.</p>}
+          {wardAnalytics.map(ward => (
+            <div key={ward.ward} className="flex items-center justify-between gap-3 border-b border-gray-50 last:border-b-0 pb-2 last:pb-0">
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-gray-900 truncate">{ward.ward}</div>
+                <div className="text-[10px] text-gray-500">{ward.resolved}/{ward.total} resolved</div>
+              </div>
+              <div className="flex gap-1 shrink-0">
+                <span className="text-[10px] font-bold bg-red-50 text-red-700 px-2 py-0.5 rounded-full">{ward.overdue} overdue</span>
+                <span className="text-[10px] font-bold bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full">{ward.urgent} urgent</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="space-y-3">
@@ -265,6 +338,7 @@ export default function AdminDashboard() {
                   <h4 className="font-bold text-gray-900 truncate">{issue.title || issue.category}</h4>
                   <p className="text-sm text-gray-500 truncate">{issue.category}</p>
                   <p className="text-xs text-gray-500 truncate">{issue.locationName || 'Location not provided'}</p>
+                  <p className="text-xs text-gray-500 truncate">{issue.ward || 'Ward not mapped'}</p>
                   <UserNameLabel userId={issue.userId} />
                   
                   <div className="flex flex-wrap items-center gap-2 mt-2">
@@ -280,6 +354,13 @@ export default function AdminDashboard() {
                     <div className="flex items-center gap-1 text-xs text-gray-600 bg-gray-50 px-2 py-0.5 rounded-full">
                       <ArrowUpCircle className="w-3 h-3 text-gray-400" />
                       <span className="font-medium">{issue.upvotesCount || 0}</span>
+                    </div>
+                    <div className={cn(
+                      "flex items-center gap-1 text-xs px-2 py-0.5 rounded-full",
+                      issue.isOverdue ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"
+                    )}>
+                      <Timer className="w-3 h-3" />
+                      <span className="font-medium">{formatSlaLabel(issue)}</span>
                     </div>
                   </div>
                 </div>
@@ -360,6 +441,44 @@ export default function AdminDashboard() {
                     className="px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold shadow-md shadow-indigo-500/20 active:scale-95 transition-all"
                   >
                     Save
+                  </button>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-50 pt-3 space-y-2">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Resolution Proof</span>
+                {issue.resolutionImageUrl && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {issue.imageUrl ? (
+                      <img src={issue.imageUrl} alt="Before" className="h-24 w-full rounded-xl object-cover bg-gray-100" />
+                    ) : (
+                      <div className="h-24 rounded-xl bg-gray-100 text-gray-400 text-xs flex items-center justify-center">No before image</div>
+                    )}
+                    <img src={issue.resolutionImageUrl} alt="After" className="h-24 w-full rounded-xl object-cover bg-gray-100" />
+                  </div>
+                )}
+                {issue.resolutionNote && <p className="text-xs text-gray-600">{issue.resolutionNote}</p>}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => updateResolutionDraft(issue.id, { file: e.target.files?.[0] || null })}
+                  className="w-full text-xs text-gray-600"
+                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={resolutionDrafts[issue.id]?.note || ''}
+                    onChange={(e) => updateResolutionDraft(issue.id, { note: e.target.value })}
+                    placeholder="Resolution note"
+                    className="flex-1 min-w-0 bg-gray-50 border border-gray-200 text-gray-700 text-sm py-2.5 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 placeholder:text-gray-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => saveResolutionProof(issue)}
+                    disabled={!resolutionDrafts[issue.id]?.file && !resolutionDrafts[issue.id]?.note?.trim()}
+                    className="px-3 py-2.5 rounded-xl bg-green-600 text-white text-xs font-bold shadow-md shadow-green-500/20 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    <Upload className="w-4 h-4" />
                   </button>
                 </div>
               </div>
