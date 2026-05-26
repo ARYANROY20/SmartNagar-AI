@@ -17,14 +17,14 @@ L.Icon.Default.mergeOptions({
   shadowUrl,
 });
 
-function RecenterMap({ position }) {
+function RecenterMap({ center, zoom }) {
   const map = useMap();
 
   useEffect(() => {
-    if (position) {
-      map.setView(position, 16);
+    if (center) {
+      map.setView(center, zoom);
     }
-  }, [map, position]);
+  }, [map, center, zoom]);
 
   return null;
 }
@@ -40,7 +40,7 @@ export default function LocationPicker({ position, setPosition, address, setAddr
         if (isMounted) setDeviceCenter(currentPosition);
       })
       .catch(error => {
-        console.warn('Device location unavailable for picker', error);
+        console.error('Device location unavailable for picker', error);
       });
     return () => {
       isMounted = false;
@@ -64,6 +64,7 @@ export default function LocationPicker({ position, setPosition, address, setAddr
       const currentPosition = await getDevicePosition();
       await choosePosition(currentPosition);
     } catch (error) {
+      console.error('Could not access device location', error);
       alert('Could not access device location. Please allow location permission or tap the map.');
     } finally {
       setIsLocating(false);
@@ -103,11 +104,11 @@ export default function LocationPicker({ position, setPosition, address, setAddr
     <div className="relative w-full h-64 rounded-2xl overflow-hidden shadow-inner border border-gray-200">
       <MapContainer
         center={mapCenter}
-        zoom={position ? 16 : 12}
+        zoom={position ? 18 : 16}
         style={{ height: '100%', width: '100%', zIndex: 0 }}
         zoomControl={false}
       >
-        <RecenterMap position={position} />
+        <RecenterMap center={mapCenter} zoom={position ? 18 : 16} />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"

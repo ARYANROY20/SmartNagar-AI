@@ -1,14 +1,21 @@
 export function getDevicePosition() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
-      reject(new Error('Geolocation is not supported in this browser'));
+      const error = new Error('Geolocation is not supported in this browser');
+      console.error('Geolocation error:', error);
+      reject(error);
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
-      position => resolve([position.coords.latitude, position.coords.longitude]),
-      reject,
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      position => {
+        resolve([position.coords.latitude, position.coords.longitude]);
+      },
+      error => {
+        console.error('Geolocation error:', error);
+        reject(error);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   });
 }

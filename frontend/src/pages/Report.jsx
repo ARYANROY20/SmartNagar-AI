@@ -63,7 +63,7 @@ export default function Report() {
           await updatePositionWithAddress(currentPosition, 'device');
         }
       } catch (error) {
-        console.warn('Device location unavailable', error);
+        console.error('Device location unavailable', error);
       }
     };
 

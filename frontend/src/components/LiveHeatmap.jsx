@@ -71,7 +71,7 @@ export default function LiveHeatmap({ issues, height = 'h-48' }) {
         if (isMounted) setDeviceCenter(position);
       })
       .catch(error => {
-        console.warn('Device location unavailable for heatmap', error);
+        console.error('Device location unavailable for heatmap', error);
       });
     return () => {
       isMounted = false;
