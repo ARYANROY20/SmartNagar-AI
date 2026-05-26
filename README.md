@@ -1,23 +1,63 @@
-# SmartNagar AI
+# SmartNagar
 
-SmartNagar AI is a civic issue reporting platform for citizens and city administrators. Citizens can report local infrastructure issues with images and location data, while administrators can review complaints, update statuses, assign work, view heatmaps, and track resolution progress.
+SmartNagar is a modern civic reporting and operations platform built to help citizens report local issues and help administrators resolve them faster. It brings together photo-based reporting, accurate location capture, complaint tracking, ward analytics, SLA monitoring, resolution proof, and citizen notifications in one clean workflow.
 
-## Features
+The goal is simple: make civic issue reporting more transparent, faster to act on, and easier for both citizens and city teams to trust.
 
-- Citizen authentication with Firebase Auth
-- Image-based complaint reporting with optional Gemini AI issue analysis
-- Location capture from device GPS, image EXIF data, or map selection
-- Complaint tracking with status, priority, votes, comments, and notifications
-- Admin dashboard for filtering, status updates, and task assignment
-- Live complaint heatmap using Leaflet
-- User profiles, trust score tracking, support notifications, and account anonymization
-- Light/dark theme toggle with saved preference
+## What SmartNagar Does
+
+- Citizens can report potholes, garbage, streetlight issues, water problems, infrastructure damage, and other civic concerns.
+- Reports include images, location, category, priority, description, and status.
+- Administrators can review, assign, update, resolve, and archive complaints.
+- Citizens can track progress through a clear timeline.
+- City teams can monitor hotspots, overdue work, ward-wise trends, and resolution progress.
+
+## Key Features
+
+- **Photo-based complaint reporting** with camera upload and preview
+- **Accurate location capture** using device GPS, image metadata, reverse geocoding, and manual map selection
+- **Duplicate complaint detection** for nearby similar reports
+- **Complaint timeline** from submission to resolution
+- **SLA tracking** based on priority, category, urgency, and public impact
+- **Before/after resolution proof** for transparent closure
+- **Ward analytics** for localized civic insights
+- **Live heatmap** to visualize complaint density
+- **Admin task assignment** with department, officer/team, notes, and due dates
+- **Citizen trust score** and voting support
+- **Notifications** for status updates and support requests
+- **Light and dark theme** with saved preference
+- **Google Gemini image analysis** to suggest title, category, and priority from uploaded images
+
+## Why It Stands Out
+
+SmartNagar is not just a complaint form. It is an operations layer for civic response:
+
+- Citizens see where their report is in the process.
+- Admins can prioritize work using urgency, SLA, ward data, and complaint clusters.
+- Resolution proof helps build public trust.
+- Duplicate detection reduces repeated reports for the same issue.
+- Ward analytics gives decision-makers a city-level view of recurring problems.
 
 ## Tech Stack
 
-- Frontend: React, Vite, Tailwind CSS, React Router, Firebase Auth, Leaflet
-- Backend: Node.js, Express, MongoDB, Mongoose, Firebase Admin, Multer
-- AI: Google Gemini API
+**Frontend**
+
+- React
+- Vite
+- Tailwind CSS
+- React Router
+- Firebase Auth
+- Leaflet and React Leaflet
+
+**Backend**
+
+- Node.js
+- Express
+- MongoDB
+- Mongoose
+- Firebase Admin
+- Multer
+- Google Gemini API for image analysis
 
 ## Project Structure
 
@@ -42,148 +82,156 @@ SmartNagar-AI/
 ## Prerequisites
 
 - Node.js 18 or newer
-- MongoDB connection string
+- MongoDB Atlas database or local MongoDB instance
 - Firebase project with Authentication enabled
 - Firebase Admin service account for backend token verification
-- Gemini API key for image analysis
+- Google Gemini API key for image analysis
 
-## Backend Setup
+## Local Setup
+
+Clone the repository and install dependencies for both apps.
 
 ```bash
 cd backend
 npm install
 ```
 
+```bash
+cd ../frontend
+npm install
+```
+
+## Backend Environment
+
 Create `backend/.env`:
 
 ```env
 PORT=5000
-MONGODB_URI=mongodb+srv://USER:PASSWORD@HOST/smartnagar
+MONGODB_URI=mongodb+srv://USER:PASSWORD@HOST/SmartNagar
 CLIENT_ORIGIN=http://localhost:5173
 
 GEMINI_API_KEY=your_gemini_api_key
 GEMINI_MODEL=gemini-2.5-flash
 
 ADMIN_SIGNUP_CODE=your_admin_signup_code
-ADMIN_EMAILS=admin@example.com,another-admin@example.com
+ADMIN_EMAILS=admin@example.com
 ```
 
-Add Firebase Admin credentials using one of these options:
+Firebase Admin credentials are required for protected backend routes. Use one of these:
 
-- Place a service account file at `backend/serviceAccountKey.json`
-- Or configure Application Default Credentials in your environment
+- Place your service account JSON at `backend/serviceAccountKey.json`
+- Or configure Application Default Credentials in your hosting environment
 
-Do not commit real service account keys or `.env` files.
+Never commit `.env` files or service account keys.
 
-Run the backend:
+Start the backend:
 
 ```bash
+cd backend
 npm run dev
 ```
 
-The API runs on the configured `PORT`.
-
-## Frontend Setup
-
-```bash
-cd frontend
-npm install
-```
+## Frontend Environment
 
 Create `frontend/.env`:
 
 ```env
 VITE_API_BASE_URL=http://localhost:5000
-VITE_INTRO_HERO_IMAGE=https://your-real-hero-image-url.example/image.jpg
+VITE_INTRO_HERO_IMAGE=https://your-image-url.example/city.jpg
 ```
 
-Run the frontend:
-
-```bash
-npm run dev
-```
-
-Open the Vite URL shown in the terminal, usually `http://localhost:5173`.
-
-## Running Both Apps Locally
-
-Use two terminals:
-
-```bash
-cd backend
-npm run dev
-```
+Start the frontend:
 
 ```bash
 cd frontend
 npm run dev
 ```
 
-Make sure `backend/.env` has `CLIENT_ORIGIN` set to the frontend URL and `frontend/.env` has `VITE_API_BASE_URL` set to the backend URL.
+Open:
 
-## Build
-
-```bash
-cd frontend
-npm run build
+```text
+http://localhost:5173
 ```
 
-Preview the production build:
+## Useful Scripts
+
+Backend:
 
 ```bash
-npm run preview
-```
-
-Start the backend in production mode:
-
-```bash
-cd backend
+npm run dev
 npm start
+```
+
+Frontend:
+
+```bash
+npm run dev
+npm run build
+npm run preview
 ```
 
 ## API Overview
 
-Main backend route groups:
+Main route groups:
 
-- `GET /api/health` - health check
-- `/api/complaints` - complaint creation, listing, tracking, votes, comments, assignment, archive status
+- `GET /api/health` - backend health check
+- `/api/complaints` - reports, duplicate checks, comments, votes, assignment, archive, status, resolution proof
 - `/api/users` - user sync, profile, notifications, support, anonymization, admin access
-- `/api/analytics` - heatmap and summary data
+- `/api/analytics` - heatmap, summary, and ward analytics
 
-Protected routes require a Firebase ID token in the `Authorization` header:
+Protected routes require a Firebase ID token:
 
 ```text
 Authorization: Bearer <firebase_id_token>
 ```
 
-## Environment Variables
+## Deployment Notes
+
+Recommended deployment:
+
+- Frontend: Vercel
+- Backend: Render
+- Database: MongoDB Atlas
+- Auth: Firebase Authentication
+
+For deployment, set:
 
 Backend:
 
-- `PORT` - backend server port
-- `MONGODB_URI` - MongoDB connection URI
-- `CLIENT_ORIGIN` or `FRONTEND_URL` - allowed frontend origin for CORS
-- `GEMINI_API_KEY` - Gemini API key
-- `GEMINI_MODEL` - Gemini model name
-- `ADMIN_SIGNUP_CODE` - code required to request admin access
-- `ADMIN_EMAILS` - comma-separated emails that should automatically be admins
+```env
+MONGODB_URI=your_production_mongodb_uri
+CLIENT_ORIGIN=https://your-frontend-domain.vercel.app
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=gemini-2.5-flash
+ADMIN_SIGNUP_CODE=your_admin_signup_code
+ADMIN_EMAILS=admin@example.com
+```
 
 Frontend:
 
-- `VITE_API_BASE_URL` - backend base URL
-- `VITE_INTRO_HERO_IMAGE` - optional real hero image URL for the intro screen
+```env
+VITE_API_BASE_URL=https://your-backend-domain.onrender.com
+VITE_INTRO_HERO_IMAGE=https://your-image-url.example/city.jpg
+```
+
+Also add the deployed frontend domain to Firebase Authentication authorized domains.
 
 ## Notes
 
-- Uploaded complaint images are stored as data URLs in MongoDB records.
-- Gemini analysis fails gracefully and returns fallback category/priority data if the AI service is unavailable.
-- The app excludes archived complaints by default unless the API is queried with archive filters.
-- If no real map center is available yet, the map components show a no-location state instead of using a fake location.
+- Images are stored as data URLs with the complaint records.
+- Location is stored as latitude and longitude in `[latitude, longitude]` order.
+- Device location requires HTTPS or localhost and browser location permission.
+- Google Gemini is used for image analysis. If the service is unavailable, reporting still works with fallback values.
+- Archived complaints are hidden from normal views unless requested through filters.
 
 ## Troubleshooting
 
-- Backend starts but MongoDB is not connected: check `MONGODB_URI`.
-- Frontend requests fail due to CORS: make sure `CLIENT_ORIGIN` matches the frontend URL exactly.
-- Protected API routes return 401/403: verify Firebase Auth and backend service account credentials.
-- AI analysis returns fallback data: check `GEMINI_API_KEY` and network access.
-- Admin dashboard is inaccessible: add the user email to `ADMIN_EMAILS` or use `ADMIN_SIGNUP_CODE`.
+- **Network Error in frontend:** check `VITE_API_BASE_URL`, backend availability, and CORS `CLIENT_ORIGIN`.
+- **MongoDB not connecting:** verify `MONGODB_URI` and MongoDB Atlas Network Access.
+- **Firebase auth failing:** add your deployed frontend domain to Firebase Authentication authorized domains.
+- **Admin dashboard inaccessible:** confirm `ADMIN_SIGNUP_CODE` and `ADMIN_EMAILS`.
+- **Location not exact:** use HTTPS, allow browser location permission, and enable GPS/location services on the device.
+
+## Vision
+
+SmartNagar is designed for smarter, more accountable civic operations. It gives citizens a simple way to report issues and gives city teams the tools to prioritize, assign, prove, and communicate resolution work with transparency.
